@@ -54,14 +54,14 @@ public:
         return connected_ && conn_ != nullptr;
     }
 
-    // 调用Get方法获取当前网络接口信息
+    // 调用GetInterfaces方法获取当前网络接口列表
     bool getInterfaces(std::string& result, std::string& errorMsg) {
         if (!isConnected()) {
             errorMsg = "客户端未连接";
             return false;
         }
 
-        DBusMessage* msg = dbus_message_new_method_call(kBusName, kObjectPath, kInterface, kMethodGet);
+        DBusMessage* msg = dbus_message_new_method_call(kBusName, kObjectPath, kInterface, kMethodGetInterfaces);
         if (!msg) {
             errorMsg = "创建方法调用消息失败";
             return false;
@@ -84,18 +84,76 @@ public:
             return false;
         }
 
+        DBusMessageIter iter;
+        if (!dbus_message_iter_init(reply, &iter) ||
+            dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY) {
+            errorMsg = "解析接口列表失败: 返回类型不是字符串数组";
+            dbus_message_unref(reply);
+            return false;
+        }
+
+        DBusMessageIter array_iter;
+        dbus_message_iter_recurse(&iter, &array_iter);
+
+        result.clear();
+        while (dbus_message_iter_get_arg_type(&array_iter) == DBUS_TYPE_STRING) {
+            const char* iface = nullptr;
+            dbus_message_iter_get_basic(&array_iter, &iface);
+            if (iface && iface[0] != '\0') {
+                if (!result.empty()) {
+                    result += ",";
+                }
+                result += iface;
+            }
+            dbus_message_iter_next(&array_iter);
+        }
+
+        dbus_message_unref(reply);
+        return true;
+    }
+
+    // 调用HealthCheck方法获取网络健康检查结果
+    bool healthCheck(std::string& result, std::string& errorMsg) {
+        if (!isConnected()) {
+            errorMsg = "客户端未连接";
+            return false;
+        }
+
+        DBusMessage* msg = dbus_message_new_method_call(kBusName, kObjectPath, kInterface, kMethodHealthCheck);
+        if (!msg) {
+            errorMsg = "创建健康检查消息失败";
+            return false;
+        }
+
+        DBusError err;
+        dbus_error_init(&err);
+
+        DBusMessage* reply = dbus_connection_send_with_reply_and_block(conn_, msg, 2000, &err);
+        dbus_message_unref(msg);
+
+        if (dbus_error_is_set(&err)) {
+            errorMsg = std::string("健康检查调用失败: ") + err.message;
+            dbus_error_free(&err);
+            return false;
+        }
+
+        if (!reply) {
+            errorMsg = "未收到健康检查应答";
+            return false;
+        }
+
         const char* s = nullptr;
         if (!dbus_message_get_args(reply, &err, DBUS_TYPE_STRING, &s, DBUS_TYPE_INVALID)) {
             if (dbus_error_is_set(&err)) {
-                errorMsg = std::string("解析返回失败: ") + err.message;
+                errorMsg = std::string("解析健康检查返回失败: ") + err.message;
                 dbus_error_free(&err);
             } else {
-                errorMsg = "解析返回失败";
+                errorMsg = "解析健康检查返回失败";
             }
             dbus_message_unref(reply);
             return false;
         }
-        
+
         result = s ? s : "";
         dbus_message_unref(reply);
         return true;
@@ -201,7 +259,7 @@ public:
 
     // 发送网络健康检查请求
     bool requestHealthCheck(std::string& result, std::string& errorMsg) {
-        return getInterfaces(result, errorMsg);
+        return healthCheck(result, errorMsg);
     }
 
     // 读取最新的网络接口状态（从序列化文件）

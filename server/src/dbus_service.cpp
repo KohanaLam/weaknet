@@ -12,6 +12,7 @@
 #include "dbus_service.hpp"
 #include "weak_netmgr.hpp"
 #include "net_info.hpp"
+#include "network_quality_assessor.hpp"
 #include "net_ping.h"
 
 namespace weaknet_dbus {
@@ -32,6 +33,10 @@ static DBusHandlerResult MessageHandlerStatic(DBusConnection* conn, DBusMessage*
     }
     if (dbus_message_is_method_call(msg, kInterface, kMethodGetInterfaces)) {
         self->handleListInterfaces(conn, msg);
+        return DBUS_HANDLER_RESULT_HANDLED;
+    }
+    if (dbus_message_is_method_call(msg, kInterface, kMethodHealthCheck)) {
+        self->handleHealthCheck(conn, msg);
         return DBUS_HANDLER_RESULT_HANDLED;
     }
     if (dbus_message_is_method_call(msg, kInterface, kMethodPing)) {
@@ -107,6 +112,29 @@ bool DbusService::handleListInterfaces(DBusConnection* conn, DBusMessage* msg) {
         snapshot = WeakNetMgr::namesOf(ctx_->iface_list);
     }
     return replyStringArray(conn, msg, snapshot);
+}
+
+bool DbusService::handleHealthCheck(DBusConnection* conn, DBusMessage* msg) {
+    std::vector<NetInfo> snapshot;
+    {
+        std::lock_guard<std::mutex> lk(ctx_->iface_mutex);
+        snapshot = ctx_->iface_list;
+    }
+
+    NetworkQualityAssessor assessor;
+    NetworkQualityResult result = assessor.assessQuality(snapshot);
+    std::string reply_text = result.details;
+
+    DBusMessage* reply = dbus_message_new_method_return(msg);
+    if (!reply) return false;
+    DBusMessageIter args;
+    dbus_message_iter_init_append(reply, &args);
+    const char* s = reply_text.c_str();
+    if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &s)) { dbus_message_unref(reply); return false; }
+    if (!dbus_connection_send(conn, reply, nullptr)) { dbus_message_unref(reply); return false; }
+    dbus_connection_flush(conn);
+    dbus_message_unref(reply);
+    return true;
 }
 
 bool DbusService::emitSpecificSignal(const std::string& signalName, const std::string& message, int32_t counter) {
@@ -270,5 +298,4 @@ bool DbusService::handlePing(DBusConnection* conn, DBusMessage* msg) {
 }
 
 }  // namespace weaknet_dbus
-
 

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <string>
 
 namespace weaknet_dbus {
@@ -106,5 +107,4 @@ private:
 };
 
 }  // namespace weaknet_dbus
-
 

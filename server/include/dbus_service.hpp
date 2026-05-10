@@ -36,6 +36,7 @@ public:
     // 暴露处理方法供静态分发函数调用
     bool handleGet(DBusConnection* conn, DBusMessage* msg);
     bool handleListInterfaces(DBusConnection* conn, DBusMessage* msg);
+    bool handleHealthCheck(DBusConnection* conn, DBusMessage* msg);
     bool handlePing(DBusConnection* conn, DBusMessage* msg);
 
 private:
@@ -47,5 +48,4 @@ private:
 };
 
 }  // namespace weaknet_dbus
-
 

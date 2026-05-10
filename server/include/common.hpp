@@ -16,6 +16,7 @@ static constexpr const char kInterface[] = "com.example.WeakNet";          // �
 static constexpr const char kMethodGet[] = "Get";                          // Get 方法（示例字符串）
 static constexpr const char kMethodListInterfaces[] = "ListInterfaces";    // 返回字符串数组
 static constexpr const char kMethodGetInterfaces[] = "GetInterfaces";      // 同义方法，返回字符串数组
+static constexpr const char kMethodHealthCheck[] = "HealthCheck";          // 网络健康检查
 static constexpr const char kMethodPing[] = "Ping";                       // Ping方法（ping指定主机）
 static constexpr const char kSignalChanged[] = "Changed";                  // Changed 信号（通用状态变化）
 static constexpr const char kSignalInterfaceChanged[] = "InterfaceChanged"; // 网卡变化信号
@@ -27,5 +28,4 @@ static const std::string kSignalSerializedFile = "./signal_changed.bin";     // 
 static const std::string kGetReplySerializedFile = "./get_reply.bin";        // Get 返回值序列化文件
 
 }  // namespace weaknet_dbus
-
 
