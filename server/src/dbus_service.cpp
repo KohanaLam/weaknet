@@ -19,6 +19,17 @@ namespace weaknet_dbus {
 
 DbusService::DbusService(ServerContext* ctx) : ctx_(ctx) {}
 
+static std::vector<NetInfo> getInterfaceSnapshot(ServerContext* ctx) {
+    if (!ctx) return {};
+    if (ctx->weak_mgr) {
+        auto snapshot = ctx->weak_mgr->getCurrentInterfaces();
+        if (!snapshot.empty()) return snapshot;
+    }
+
+    std::lock_guard<std::mutex> lk(ctx->iface_mutex);
+    return ctx->iface_list;
+}
+
 // 静态自由函数，转调到对象实例
 static DBusHandlerResult MessageHandlerStatic(DBusConnection* conn, DBusMessage* msg, void* user_data) {
     auto* self = reinterpret_cast<DbusService*>(user_data);
@@ -42,7 +53,7 @@ static DBusHandlerResult MessageHandlerStatic(DBusConnection* conn, DBusMessage*
     if (dbus_message_is_method_call(msg, kInterface, kMethodPing)) {
         self->handlePing(conn, msg);
         return DBUS_HANDLER_RESULT_HANDLED;
-    }
+    } 
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
@@ -106,20 +117,12 @@ bool DbusService::replyStringArray(DBusConnection* conn, DBusMessage* msg, const
 }
 
 bool DbusService::handleListInterfaces(DBusConnection* conn, DBusMessage* msg) {
-    std::vector<std::string> snapshot;
-    {
-        std::lock_guard<std::mutex> lk(ctx_->iface_mutex);
-        snapshot = WeakNetMgr::namesOf(ctx_->iface_list);
-    }
+    auto snapshot = WeakNetMgr::namesOf(getInterfaceSnapshot(ctx_));
     return replyStringArray(conn, msg, snapshot);
 }
 
 bool DbusService::handleHealthCheck(DBusConnection* conn, DBusMessage* msg) {
-    std::vector<NetInfo> snapshot;
-    {
-        std::lock_guard<std::mutex> lk(ctx_->iface_mutex);
-        snapshot = ctx_->iface_list;
-    }
+    std::vector<NetInfo> snapshot = getInterfaceSnapshot(ctx_);
 
     NetworkQualityAssessor assessor;
     NetworkQualityResult result = assessor.assessQuality(snapshot);
@@ -235,14 +238,15 @@ bool DbusService::handlePing(DBusConnection* conn, DBusMessage* msg) {
     
     // 获取当前上网网卡
     std::string currentIface;
-    {
-        std::lock_guard<std::mutex> lk(ctx_->iface_mutex);
-        for (const auto& net : ctx_->iface_list) {
-            if (net.usingNow()) {
-                currentIface = net.ifName();
-                break;
-            }
+    auto snapshot = getInterfaceSnapshot(ctx_);
+    for (const auto& net : snapshot) {
+        if (net.usingNow()) {
+            currentIface = net.ifName();
+            break;
         }
+    }
+    if (currentIface.empty() && !snapshot.empty()) {
+        currentIface = snapshot.front().ifName();
     }
     
     if (currentIface.empty()) {
@@ -298,4 +302,3 @@ bool DbusService::handlePing(DBusConnection* conn, DBusMessage* msg) {
 }
 
 }  // namespace weaknet_dbus
-

@@ -104,7 +104,7 @@ int main() {
     
     int event_count = 0;
     
-    while (std::chrono::steady_-clock::now() < end_time) {
+    while (std::chrono::steady_clock::now() < end_time) {
         auto now = std::chrono::steady_clock::now();
         auto remaining = std::chrono::duration_cast<std::chrono::seconds>(end_time - now).count();
         

@@ -4,9 +4,35 @@
 #include "traffic_analyzer.hpp"
 #include "logger.hpp"
 #include <chrono>
+#include <fstream>
 #include <thread>
 
 namespace weaknet_dbus {
+
+namespace {
+
+bool fileExists(const std::string& path) {
+    std::ifstream file(path);
+    return file.good();
+}
+
+std::string resolveBpfObjectPath() {
+    const std::string candidates[] = {
+        "server/build/flow_rate.bpf.o",
+        "../build/flow_rate.bpf.o",
+        "build/flow_rate.bpf.o"
+    };
+
+    for (const auto& path : candidates) {
+        if (fileExists(path)) {
+            return path;
+        }
+    }
+
+    return "build/flow_rate.bpf.o";
+}
+
+} // namespace
 
 TrafficAnalyzer::TrafficAnalyzer() 
     : running_(false), interval_seconds_(10) {
@@ -26,8 +52,10 @@ void TrafficAnalyzer::start(const std::string& interface, int interval_seconds) 
     interface_ = interface;
     interval_seconds_ = interval_seconds;
     
-    // 设置eBPF对象路径
-    analyzer_->setBpfObjectPath("../build/flow_rate.bpf.o");
+    // 设置eBPF对象路径，兼容从项目根目录、server目录或server/bin目录启动
+    std::string bpfObjectPath = resolveBpfObjectPath();
+    analyzer_->setBpfObjectPath(bpfObjectPath);
+    LOG_INFO(LogModule::WEAK_MGR, "Using eBPF object path: " << bpfObjectPath);
     
     // 设置异常检测参数
     analyzer_->setAnomalyDetectionParams(

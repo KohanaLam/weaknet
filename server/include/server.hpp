@@ -17,8 +17,8 @@ namespace weaknet_dbus {
 class DbusService;  // 前置声明
 class WeakNetMgr;   // 前置声明
 class NetInfo;      // 前置声明
-
 struct ServerContext {
+
     // DBus 连接
     ::DBusConnection* connection = nullptr;
 

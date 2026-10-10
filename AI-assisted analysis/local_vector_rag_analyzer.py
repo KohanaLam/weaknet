@@ -16,9 +16,15 @@ from dataclasses import dataclass
 
 try:
     from openai import OpenAI
-    from langchain.text_splitter import RecursiveCharacterTextSplitter
+    try:
+        from langchain_text_splitters import RecursiveCharacterTextSplitter
+    except ImportError:
+        from langchain.text_splitter import RecursiveCharacterTextSplitter
     from langchain_community.vectorstores import FAISS
-    from langchain.schema import Document
+    try:
+        from langchain_core.documents import Document
+    except ImportError:
+        from langchain.schema import Document
     VECTOR_RAG_AVAILABLE = True
 except ImportError as e:
     print(f"⚠️ 向量RAG依赖不可用: {e}")
@@ -251,7 +257,8 @@ class LocalVectorRAGAnalyzer:
                 print("📂 加载现有向量存储...")
                 self.vector_store = FAISS.load_local(
                     self.vector_store_path, 
-                    self.embeddings
+                    self.embeddings,
+                    allow_dangerous_deserialization=True
                 )
                 print("✅ 向量存储加载成功")
                 return
@@ -525,7 +532,9 @@ class LocalVectorRAGAnalyzer:
 def main():
     """主函数 - 示例用法"""
     # 初始化本地向量RAG系统
-    api_key = "YOUR_DASHSCOPE_API_KEY_HERE"  # 请替换为您的阿里百炼API密钥
+    api_key = os.getenv("DASHSCOPE_API_KEY", "")
+    if not api_key:
+        print("⚠️ 未设置 DASHSCOPE_API_KEY，涉及大模型调用的分析可能失败")
     rag_analyzer = LocalVectorRAGAnalyzer(api_key)
     
     # 示例log_capture.py输出

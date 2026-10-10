@@ -23,7 +23,7 @@ class TcpLossMonitor {
 public:
     static std::shared_ptr<TcpLossMonitor> getInstance();
 
-    // 读取系统 TCP 计数（来自 /proc/net/snmp）
+    // 读取系统 TCP 计数（来自 /proc/net/snmp）(不是来自他说的，而是来自Linux socket diagnostics 获取 TCP socket 的 tcp_info)
     bool sample(TcpStats& outStats);
     // 针对指定接口名统计（优先用 netlink 聚合该接口的 tcp_info；必要时回落）
     bool sampleForInterface(const std::string& ifaceName, TcpStats& outStats);

@@ -1,0 +1,36 @@
+# 虚拟环境（必须忽略，避免几万个第三方库文件传上去）
+venv/
+.venv/
+env/
+
+# Python 缓存与中间产物
+__pycache__/
+*.py[cod]
+build/
+dist/
+
+# 日志与临时调试文件
+*.log
+logs/
+
+# 网络抓包大文件（pcap 体积巨大，很容易超 GitHub 100MB 限制）
+*.pcap
+*.pcapng
+*.cap
+
+# AI / 深度学习权重文件
+*.pth
+*.pt
+*.onnx
+*.bin
+*.h5
+*.ckpt
+
+# 编辑器配置与系统文件
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# 敏感文件（如果以后有包含密钥的配置）
+.env

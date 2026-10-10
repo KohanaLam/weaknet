@@ -1,5 +1,6 @@
 // common.hpp
 // 提供DBus相关的常量与通用定义
+// common.hpp 定义的是 WeakNet 的 DBus 协议边界。
 
 #pragma once
 

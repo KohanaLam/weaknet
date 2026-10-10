@@ -35,7 +35,7 @@ struct NetlinkMessageBuffer {
     std::vector<char> data;
     NetlinkMessageBuffer() : data(64 * 1024) {}
 };
-
+ 
 // Utility to set non-blocking
 void setNonBlocking(int fd) {
     int flags = fcntl(fd, F_GETFL, 0);
@@ -52,6 +52,7 @@ template <typename T, size_t N>
 void parseRtAttributes(struct rtattr* rta, int len, T (&attrs)[N]) {
     std::fill(std::begin(attrs), std::end(attrs), nullptr);
     while (RTA_OK(rta, len)) {
+        // 检查属性类型编号有没有超过数组大小，防止越界
         if (rta->rta_type < N) {
             attrs[rta->rta_type] = rta;
         }
@@ -173,7 +174,10 @@ private:
                 throw std::runtime_error("recvmsg 失败");
             }
             if (len == 0) break;
-
+            
+            // 如果当前消息没读完整，也就是len不够一个nlmsghdr，当前代码没有把这半条消息保存起来等待下一次拼接
+            // 但是其实netlink 消息是数据报格式的通信，所以一条netlink消息不会被拆成一半那种，只要接受的buffer足够大
+            // 通常一次 recvmsg() 会收到一个或多个完整 netlink message。
             for (nlmsghdr* hdr = reinterpret_cast<nlmsghdr*>(buffer.data.data());
                  NLMSG_OK(hdr, static_cast<unsigned>(len));
                  hdr = NLMSG_NEXT(hdr, len)) {
@@ -181,6 +185,7 @@ private:
                 if (hdr->nlmsg_type == NLMSG_ERROR) {
                     continue;
                 }
+                // 处理真正的netlink消息，比如网卡信息或路由信息
                 dispatchNetlinkMessage(hdr);
             }
         }

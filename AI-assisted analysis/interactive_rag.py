@@ -173,7 +173,9 @@ class InteractiveNetworkRAG:
 
 def main():
     """主函数"""
-    api_key = "YOUR_DASHSCOPE_API_KEY_HERE"  # 请替换为您的阿里百炼API密钥
+    api_key = os.getenv("DASHSCOPE_API_KEY", "")
+    if not api_key:
+        print("⚠️ 未设置 DASHSCOPE_API_KEY，涉及大模型调用的分析可能失败")
     
     if len(sys.argv) > 1:
         # 命令行模式

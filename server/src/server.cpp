@@ -102,6 +102,7 @@ static bool diffInterfaces(const std::vector<std::string>& old_list,
 }
 
 // 独立接口：初始化 DBus、注册对象路径
+// init_dbus() 的职责是：让服务端接入 DBus session bus，注册服务名，注册对象路径，并把项目自己的 DbusService 挂到 DBus 消息分发上。
 DBusConnection* init_dbus(ServerContext* ctx) {
     LOG_INFO(LogModule::DBUS, "init_dbus: start connecting to session bus...");
     dbus_threads_init_default();
@@ -145,6 +146,7 @@ DBusConnection* init_dbus(ServerContext* ctx) {
 }
 
 // 独立接口：启动网卡监控线程（使用 WeakNetMgr 与 NetInfo）
+// start_iface_monitor_thread() 的作用是：启动一个后台线程，每 10 秒重新扫描一次“有上网能力的网卡”，发现网卡增删时更新 WeakNetMgr，并通过 DBus 发事件通知。
 void start_iface_monitor_thread(ServerContext* ctx) {
     ctx->iface_thread = std::thread([ctx](){
         LOG_INFO(LogModule::INTERFACE, "monitor thread started");
@@ -215,8 +217,19 @@ static void start_traffic_analysis_thread(ServerContext* ctx) {
         LOG_INFO(LogModule::WEAK_MGR, "traffic analysis thread started");
         if (!ctx->weak_mgr) ctx->weak_mgr = new WeakNetMgr();
         
-        // 启动流量分析器（使用eth0作为默认接口）
-        ctx->weak_mgr->startTrafficAnalysis("eth0", 10);
+        // 启动流量分析器，优先使用当前上网接口，其次使用已发现的第一个接口
+        std::string trafficIface = "eth0";
+        auto initialInterfaces = ctx->weak_mgr->getCurrentInterfaces();
+        for (const auto& net : initialInterfaces) {
+            if (net.usingNow()) {
+                trafficIface = net.ifName();
+                break;
+            }
+        }
+        if (trafficIface == "eth0" && !initialInterfaces.empty()) {
+            trafficIface = initialInterfaces.front().ifName();
+        }
+        ctx->weak_mgr->startTrafficAnalysis(trafficIface, 10);
         
         int loop_count = 0;
         while (ctx->running.load()) {
@@ -407,6 +420,5 @@ int start_server() {
 }
 
 }  // namespace weaknet_dbus
-
 
 

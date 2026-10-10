@@ -10,13 +10,17 @@ BIN_DIR=bin
 BUILD_DIR=build
 TARGET=$(BIN_DIR)/weaknet-dbus-server
 BPF_TARGET=$(BUILD_DIR)/flow_rate.bpf.o
+VMLINUX_H=vmlinux.h
 
 all: dirs $(BPF_TARGET) $(TARGET)
 
 dirs:
 	mkdir -p $(BIN_DIR) $(BUILD_DIR)
 
-$(BPF_TARGET): src/flow_rate.bpf.c
+$(VMLINUX_H):
+	bpftool btf dump file /sys/kernel/btf/vmlinux format c > $@
+
+$(BPF_TARGET): src/flow_rate.bpf.c $(VMLINUX_H)
 	clang -g -O2 -target bpf -c $< -o $@
 
 $(TARGET): $(SRC) $(INC) $(BPF_TARGET)
@@ -25,9 +29,8 @@ $(TARGET): $(SRC) $(INC) $(BPF_TARGET)
 .PHONY: clean run
 
 clean:
-	rm -rf $(BIN_DIR) $(BUILD_DIR)
+	rm -rf $(BIN_DIR) $(BUILD_DIR) $(VMLINUX_H)
 
 run: $(TARGET)
 	DBUS_SESSION_BUS_ADDRESS=$$DBUS_SESSION_BUS_ADDRESS $(TARGET)
-
 

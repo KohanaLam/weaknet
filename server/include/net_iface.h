@@ -5,6 +5,7 @@
 #include <mutex>
 #include <memory>
 
+// 负责向 Linux 内核查询当前哪些网卡可上网
 class NetInterfaceManager {
 public:
     // 单例获取（线程安全懒汉，共享所有者）

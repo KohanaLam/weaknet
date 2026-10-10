@@ -67,10 +67,11 @@ install_dependencies() {
                 llvm \
                 pkg-config \
                 libdbus-1-dev \
-                libglog-dev \
+                libgoogle-glog-dev \
                 libelf-dev \
                 zlib1g-dev \
                 libcap-dev \
+                bpftool \
                 linux-headers-$(uname -r) \
                 libbpf-dev
             ;;
@@ -109,10 +110,11 @@ install_dependencies() {
             print_info "  - clang, llvm"
             print_info "  - pkg-config"
             print_info "  - libdbus-1-dev (或 dbus-devel)"
-            print_info "  - libglog-dev (或 glog-devel)"
+            print_info "  - libgoogle-glog-dev (或 glog-devel)"
             print_info "  - libelf-dev (或 elfutils-libelf-devel)"
             print_info "  - zlib1g-dev (或 zlib-devel)"
             print_info "  - libcap-dev (或 libcap-devel)"
+            print_info "  - bpftool"
             print_info "  - linux-headers-$(uname -r) (或 kernel-devel)"
             print_info "  - libbpf-dev (或 libbpf-devel)"
             read -p "是否继续编译? (y/N): " -n 1 -r
@@ -145,6 +147,10 @@ check_dependencies() {
     if ! command -v pkg-config &> /dev/null; then
         missing_deps+=("pkg-config")
     fi
+
+    if ! command -v bpftool &> /dev/null; then
+        missing_deps+=("bpftool")
+    fi
     
     # 检查库文件
     if ! pkg-config --exists dbus-1; then
@@ -152,7 +158,7 @@ check_dependencies() {
     fi
     
     if ! pkg-config --exists libglog; then
-        missing_deps+=("libglog-dev")
+        missing_deps+=("libgoogle-glog-dev")
     fi
     
     if [ ${#missing_deps[@]} -ne 0 ]; then
